@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiblioMatch - Troca de Livros</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Configuração do Tailwind para refletir o Design System -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            bg: '#F9FAFB',
+                            surface: '#FFFFFF',
+                            title: '#111827',
+                            text: '#6B7280',
+                            primary: '#4F46E5',
+                            accent: '#25D366'
+                        }
+                    },
+                    borderRadius: {
+                        'input-btn': '8px',
+                        'card': '16px',
+                    },
+                    boxShadow: {
+                        'card-subtle': '0 4px 12px rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .tab-content.active { display: block; opacity: 1; animation: fadeIn 0.4s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+    </style>
+</head>
+<body class="bg-brand-bg text-brand-text font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- Sistema de Notificações (Toast) -->
+    <div id="toast" class="fixed top-4 right-4 p-4 rounded-input-btn shadow-lg text-white font-medium transition-opacity duration-300 z-[100] hidden"></div>
+
+    <!-- TELA DE AUTENTICAÇÃO -->
+    <div id="auth-view" class="w-full h-full flex items-center justify-center p-4 overflow-y-auto absolute inset-0 bg-brand-bg z-50 transition-opacity duration-300">
+        <div class="bg-brand-surface p-8 rounded-card shadow-card-subtle w-full max-w-md border border-gray-100 my-auto">
+            <div class="flex flex-col items-center mb-8">
+                <div class="w-12 h-12 rounded-lg bg-brand-primary flex items-center justify-center text-white mb-4">
+                    <i class="ph ph-books text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-brand-title">BiblioMatch</h1>
+                <p class="text-brand-text text-sm">A maior rede de troca de livros</p>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">E-mail</label>
+                    <input type="email" id="login-email" required class="w-full px-4 py-2.5 rounded-input-btn border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title bg-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">Senha</label>
+                    <input type="password" id="login-password" required class="w-full px-4 py-2.5 rounded-input-btn border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title bg-white">
+                </div>
+                <button type="submit" class="w-full bg-brand-primary hover:bg-indigo-700 text-white font-medium py-3 rounded-input-btn transition-colors mt-2">Entrar</button>
+                <p class="text-center text-sm text-brand-text mt-4">Não tem uma conta? <button type="button" onclick="toggleAuthMode()" class="text-brand-primary font-medium hover:underline">Cadastre-se</button></p>
+            </form>
+
+            <!-- Register Form (Hidden by default) -->
+            <form id="register-form" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">Nome Completo</label>
+                    <input type="text" id="reg-name" required class="w-full px-4 py-2.5 rounded-input-btn border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title bg-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">E-mail</label>
+                    <input type="email" id="reg-email" required class="w-full px-4 py-2.5 rounded-input-btn border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title bg-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">Senha</label>
+                    <input type="password" id="reg-password" required minlength="6" class="w-full px-4 py-2.5 rounded-input-btn border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title bg-white">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-brand-title mb-1.5">WhatsApp</label>
+                        <input type="tel" id="reg-whatsapp" required placeholder="(11) 99999-9999" class="w-full px-4 py-2.5 rounded-input-btn border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title bg-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-brand-title mb-1.5">Nascimento</label>
+                        <input type="date" id="reg-dob" required class="w-full px-4 py-2.5 rounded-input-btn border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title bg-white text-sm">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-brand-primary hover:bg-indigo-700 text-white font-medium py-3 rounded-input-btn transition-colors mt-2">Criar Conta</button>
+                <p class="text-center text-sm text-brand-text mt-4">Já tem uma conta? <button type="button" onclick="toggleAuthMode()" class="text-brand-primary font-medium hover:underline">Faça Login</button></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- TELA PRINCIPAL (APP) -->
+    <div id="app-view" class="w-full h-full flex flex-col md:flex-row hidden relative">
+        <!-- Sidebar / Bottom Nav -->
+        <aside class="bg-brand-surface w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col shadow-sm z-40 md:relative fixed bottom-0 left-0">
+            <!-- Logo Desktop -->
+            <div class="hidden md:flex p-6 items-center gap-3 border-b border-gray-100">
+                <div class="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center text-white">
+                    <i class="ph ph-books text-xl"></i>
+                </div>
+                <h1 class="text-xl font-bold text-brand-title tracking-tight">BiblioMatch</h1>
+            </div>
+
+            <!-- Navegação -->
+            <nav class="flex-1 md:px-4 md:py-6 flex flex-row md:flex-col justify-around md:justify-start gap-1 md:gap-2">
+                <button onclick="switchTab('estante', this)" class="nav-btn w-full flex flex-col md:flex-row items-center gap-1 md:gap-3 p-3 md:px-4 md:py-3 rounded-input-btn text-brand-title bg-gray-100 font-medium transition-colors hover:bg-gray-50">
+                    <i class="ph ph-bookshelf text-2xl md:text-xl"></i>
+                    <span class="text-[10px] md:text-base">Estante</span>
+                </button>
+                <button onclick="switchTab('wishlist', this)" class="nav-btn w-full flex flex-col md:flex-row items-center gap-1 md:gap-3 p-3 md:px-4 md:py-3 rounded-input-btn text-brand-text hover:bg-gray-50 hover:text-brand-title transition-colors">
+                    <i class="ph ph-bookmark-simple text-2xl md:text-xl"></i>
+                    <span class="text-[10px] md:text-base">Wishlist</span>
+                </button>
+                <button onclick="switchTab('matches', this)" class="nav-btn w-full flex flex-col md:flex-row items-center gap-1 md:gap-3 p-3 md:px-4 md:py-3 rounded-input-btn text-brand-text hover:bg-gray-50 hover:text-brand-title transition-colors relative">
+                    <i class="ph ph-handshake text-2xl md:text-xl"></i>
+                    <span class="text-[10px] md:text-base">Matches</span>
+                    <span class="absolute top-2 right-1/4 md:top-3 md:right-4 w-2 h-2 rounded-full bg-brand-accent"></span>
+                </button>
+                <button onclick="switchTab('perfil', this)" class="nav-btn w-full flex flex-col md:flex-row items-center gap-1 md:gap-3 p-3 md:px-4 md:py-3 rounded-input-btn text-brand-text hover:bg-gray-50 hover:text-brand-title transition-colors">
+                    <i class="ph ph-user text-2xl md:text-xl"></i>
+                    <span class="text-[10px] md:text-base">Perfil</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 pb-24 md:pb-10 relative bg-brand-bg">
+            
+            <!-- ABA: ESTANTE -->
+            <section id="estante" class="tab-content active max-w-5xl mx-auto">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-brand-title mb-1">Minha Estante</h2>
+                        <p class="text-brand-text text-sm md:text-base">Gerencie os livros disponíveis para troca.</p>
+                    </div>
+                    <button onclick="openModal('add-book-modal')" class="bg-brand-primary text-white font-medium px-5 py-2.5 rounded-input-btn flex items-center justify-center gap-2 hover:bg-opacity-90 shadow-sm whitespace-nowrap">
+                        <i class="ph ph-plus-circle text-lg"></i>
+                        Adicionar Livro
+                    </button>
+                </div>
+                <!-- Book Grid -->
+                <div id="books-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    <!-- Books will be injected here -->
+                </div>
+                <div id="empty-books" class="hidden flex-col items-center justify-center py-20 text-center">
+                    <i class="ph ph-books text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-brand-title font-medium text-lg">Sua estante está vazia</p>
+                    <p class="text-brand-text text-sm mt-1">Adicione livros para começar a receber propostas.</p>
+                </div>
+            </section>
+
+            <!-- ABA: WISHLIST -->
+            <section id="wishlist" class="tab-content max-w-5xl mx-auto">
+                <div class="mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-brand-title mb-1">Minha Wishlist</h2>
+                    <p class="text-brand-text text-sm md:text-base">Livros que você tem interesse em receber.</p>
+                </div>
+                <form id="add-wishlist-form" class="relative max-w-lg mb-8 flex gap-2">
+                    <div class="relative flex-1">
+                        <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                        <input type="text" id="wishlist-input" required placeholder="Título ou autor desejado..." class="w-full pl-11 pr-4 py-3 rounded-input-btn border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary text-brand-title shadow-sm">
+                    </div>
+                    <button type="submit" class="bg-brand-primary text-white px-6 py-3 rounded-input-btn font-medium hover:bg-opacity-90 transition-colors shadow-sm">Adicionar</button>
+                </form>
+                <div id="wishlist-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <!-- Wishlist items injected here -->
+                </div>
+                <div id="empty-wishlist" class="hidden flex-col items-center justify-center py-10 text-center">
+                    <p class="text-brand-text text-sm">Você ainda não adicionou nenhum livro à sua lista de desejos.</p>
+                </div>
+            </section>
+
+            <!-- ABA: MATCHES -->
+            <section id="matches" class="tab-content max-w-3xl mx-auto">
+                <div class="text-center mb-10 mt-4">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-primary/10 text-brand-primary mb-4">
+                        <i class="ph ph-confetti text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-brand-title mb-2">Temos um Match!</h2>
+                    <p class="text-brand-text">Você encontrou uma troca perfeita com a Maria.</p>
+                </div>
+                <!-- Card Estático de Match -->
+                <div class="bg-brand-surface rounded-card p-6 md:p-10 shadow-card-subtle border border-gray-100 text-center relative overflow-hidden">
+                    <div class="absolute -top-24 -right-24 w-48 h-48 bg-brand-primary/5 rounded-full blur-3xl"></div>
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 relative z-10">
+                        <div class="flex flex-col items-center">
+                            <p class="text-xs font-medium text-brand-text mb-2">Você oferece</p>
+                            <div class="w-24 md:w-32 shadow-md rounded-lg overflow-hidden border border-gray-100 bg-white">
+                                <img src="https://placehold.co/200x300/4F46E5/FFFFFF?text=Seu+Livro" alt="Seu Livro" class="w-full h-auto">
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center justify-center rotate-90 sm:rotate-0">
+                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gray-50 flex items-center justify-center shadow-sm border border-gray-100 text-brand-primary">
+                                <i class="ph ph-arrows-left-right text-xl md:text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <p class="text-xs font-medium text-brand-text mb-2">Maria oferece</p>
+                            <div class="w-24 md:w-32 shadow-md rounded-lg overflow-hidden border border-gray-100 bg-white">
+                                <img src="https://placehold.co/200x300/25D366/FFFFFF?text=Livro+Dela" alt="Livro do Outro" class="w-full h-auto">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-10 max-w-sm mx-auto">
+                        <button class="w-full bg-brand-accent hover:bg-[#20bd5a] text-white font-medium px-4 py-3 md:py-4 rounded-input-btn flex items-center justify-center gap-2 transition-colors shadow-sm">
+                            <i class="ph ph-whatsapp-logo text-xl"></i>
+                            Combinar Troca pelo WhatsApp
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA: PERFIL -->
+            <section id="perfil" class="tab-content max-w-2xl mx-auto">
+                <div class="mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-brand-title mb-1">Meu Perfil</h2>
+                    <p class="text-brand-text text-sm md:text-base">Suas informações de conta.</p>
+                </div>
+                <div class="bg-brand-surface rounded-card p-6 md:p-8 shadow-card-subtle border border-gray-50">
+                    <div class="flex items-center gap-4 mb-8 pb-8 border-b border-gray-100">
+                        <div class="w-16 h-16 rounded-full bg-brand-primary text-white flex items-center justify-center text-2xl font-bold" id="profile-avatar">
+                            --
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-brand-title text-lg" id="profile-name">Carregando...</h3>
+                            <p class="text-brand-text text-sm" id="profile-email">---</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4 mb-8">
+                        <div>
+                            <label class="block text-xs font-medium text-brand-text mb-1">WhatsApp Registrado</label>
+                            <p class="text-brand-title font-medium bg-gray-50 p-3 rounded-input-btn border border-gray-100" id="profile-whatsapp">---</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-brand-text mb-1">Data de Nascimento</label>
+                            <p class="text-brand-title font-medium bg-gray-50 p-3 rounded-input-btn border border-gray-100" id="profile-dob">---</p>
+                        </div>
+                    </div>
+                    <button id="btn-logout" class="w-full sm:w-auto bg-red-50 text-red-600 hover:bg-red-100 font-medium px-6 py-2.5 rounded-input-btn transition-colors border border-red-100">
+                        Sair da Conta (Logout)
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL: ADICIONAR LIVRO -->
+    <div id="add-book-modal" class="fixed inset-0 bg-brand-title/50 z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-brand-surface rounded-card shadow-lg w-full max-w-md p-6 transform scale-95 transition-transform duration-300 relative" id="add-book-content">
+            <button onclick="closeModal('add-book-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-brand-title">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+            <h3 class="text-xl font-bold text-brand-title mb-4">Adicionar à Estante</h3>
+            <form id="add-book-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">Título do Livro</label>
+                    <input type="text" id="book-title" required class="w-full px-4 py-2 rounded-input-btn border border-gray-300 focus:ring-2 focus:ring-brand-primary focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">Autor</label>
+                    <input type="text" id="book-author" required class="w-full px-4 py-2 rounded-input-btn border border-gray-300 focus:ring-2 focus:ring-brand-primary focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-brand-title mb-1.5">Estado de Conservação / Descrição</label>
+                    <textarea id="book-desc" required rows="3" class="w-full px-4 py-2 rounded-input-btn border border-gray-300 focus:ring-2 focus:ring-brand-primary focus:outline-none text-sm resize-none"></textarea>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeModal('add-book-modal')" class="flex-1 bg-white border border-gray-300 text-brand-title font-medium py-2.5 rounded-input-btn hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-brand-primary text-white font-medium py-2.5 rounded-input-btn hover:bg-opacity-90 shadow-sm">Salvar Livro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lógica da Aplicação (Utilizando LocalStorage para garantir funcionamento completo no Demo) -->
+    <script>
+        // --- SISTEMA DE UI ---
+        const toast = document.getElementById('toast');
+        window.showToast = (message, type = 'error') => {
+            toast.textContent = message;
+            toast.className = `fixed top-4 right-4 p-4 rounded-input-btn shadow-lg text-white font-medium transition-opacity duration-300 z-[100] ${type === 'error' ? 'bg-red-500' : 'bg-brand-accent'}`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        };
+
+        window.toggleAuthMode = () => {
+            const login = document.getElementById('login-form');
+            const reg = document.getElementById('register-form');
+            login.classList.toggle('hidden');
+            reg.classList.toggle('hidden');
+        };
+
+        window.switchTab = (tabId, btnElement) => {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-gray-100', 'text-brand-title');
+                btn.classList.add('text-brand-text');
+            });
+            document.getElementById(tabId).classList.add('active');
+            if (btnElement) {
+                btnElement.classList.add('bg-gray-100', 'text-brand-title');
+                btnElement.classList.remove('text-brand-text');
+            }
+        };
+
+        window.openModal = (id) => {
+            const modal = document.getElementById(id);
+            const content = modal.querySelector('div');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        };
+
+        window.closeModal = (id) => {
+            const modal = document.getElementById(id);
+            const content = modal.querySelector('div');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        };
+
+        // --- LÓGICA DE NEGÓCIO (LocalStorage) ---
+        let currentUser = null;
+
+        const validateAge = (dobString) => {
+            const dob = new Date(dobString + 'T00:00:00'); 
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+            return age >= 18;
+        };
+
+        const loadData = (key) => JSON.parse(localStorage.getItem(key) || '[]');
+        const saveData = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+
+        const renderBooks = () => {
+            if (!currentUser) return;
+            const books = loadData(`books_${currentUser.email}`);
+            const grid = document.getElementById('books-grid');
+            const empty = document.getElementById('empty-books');
+            grid.innerHTML = '';
+            
+            if (books.length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+            } else {
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+                grid.classList.remove('hidden');
+                books.forEach(book => {
+                    grid.innerHTML += `
+                        <div class="bg-brand-surface rounded-card p-4 shadow-card-subtle flex flex-col border border-gray-50 group">
+                            <div class="w-full aspect-[2/3] bg-gray-100 rounded-lg mb-3 flex items-center justify-center bg-gradient-to-tr from-gray-100 to-gray-200">
+                                <i class="ph ph-book-open text-4xl text-gray-300"></i>
+                            </div>
+                            <h3 class="font-bold text-brand-title text-sm md:text-base leading-tight mb-1 line-clamp-1">${book.title}</h3>
+                            <p class="text-brand-text text-xs md:text-sm mb-2 line-clamp-1">${book.author}</p>
+                            <p class="text-[10px] text-gray-400 line-clamp-2 mb-3 mt-auto">${book.desc}</p>
+                            <button onclick="deleteBook('${book.id}')" class="w-full text-xs text-red-500 py-1.5 rounded bg-red-50 hover:bg-red-100 transition-colors">Remover</button>
+                        </div>
+                    `;
+                });
+            }
+        };
+
+        const renderWishlist = () => {
+            if (!currentUser) return;
+            const items = loadData(`wishlist_${currentUser.email}`);
+            const grid = document.getElementById('wishlist-grid');
+            const empty = document.getElementById('empty-wishlist');
+            grid.innerHTML = '';
+            
+            if (items.length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                empty.classList.add('flex');
+            } else {
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+                grid.classList.remove('hidden');
+                items.forEach(item => {
+                    grid.innerHTML += `
+                        <div class="bg-white p-4 rounded-card border border-gray-100 shadow-sm flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-brand-primary/10 rounded flex items-center justify-center text-brand-primary">
+                                    <i class="ph ph-bookmark-simple text-xl"></i>
+                                </div>
+                                <span class="font-medium text-brand-title text-sm">${item.title}</span>
+                            </div>
+                            <button onclick="deleteWishlist('${item.id}')" class="text-gray-400 hover:text-red-500"><i class="ph ph-trash text-lg"></i></button>
+                        </div>
+                    `;
+                });
+            }
+        };
+
+        const updateUIState = () => {
+            const authView = document.getElementById('auth-view');
+            const appView = document.getElementById('app-view');
+
+            if (currentUser) {
+                authView.classList.add('hidden');
+                appView.classList.remove('hidden');
+                
+                // Profile
+                document.getElementById('profile-name').textContent = currentUser.name;
+                document.getElementById('profile-email').textContent = currentUser.email;
+                document.getElementById('profile-whatsapp').textContent = currentUser.wpp;
+                const [y, m, day] = currentUser.dob.split('-');
+                document.getElementById('profile-dob').textContent = `${day}/${m}/${y}`;
+                document.getElementById('profile-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+
+                renderBooks();
+                renderWishlist();
+            } else {
+                appView.classList.add('hidden');
+                authView.classList.remove('hidden');
+            }
+        };
+
+        // Auth Submit
+        document.getElementById('register-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-password').value;
+            const wpp = document.getElementById('reg-whatsapp').value;
+            const dob = document.getElementById('reg-dob').value;
+
+            if (!validateAge(dob)) {
+                showToast('Você precisa ter 18 anos ou mais para utilizar a plataforma.', 'error');
+                return;
+            }
+
+            const users = loadData('users');
+            if (users.find(u => u.email === email)) {
+                showToast('Este e-mail já está cadastrado. Faça login.', 'error');
+                return;
+            }
+
+            const newUser = { name, email, pass, wpp, dob };
+            users.push(newUser);
+            saveData('users', users);
+            
+            currentUser = newUser;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            showToast('Conta criada com sucesso!', 'success');
+            updateUIState();
+        });
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            
+            const users = loadData('users');
+            const user = users.find(u => u.email === email && u.pass === pass);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showToast('Login efetuado com sucesso!', 'success');
+                updateUIState();
+            } else {
+                showToast('Credenciais inválidas. Verifique seu e-mail e senha.', 'error');
+            }
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            updateUIState();
+        });
+
+        // Add Book
+        document.getElementById('add-book-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+            
+            const title = document.getElementById('book-title').value;
+            const author = document.getElementById('book-author').value;
+            const desc = document.getElementById('book-desc').value;
+            
+            const books = loadData(`books_${currentUser.email}`);
+            books.push({ id: Date.now().toString(), title, author, desc });
+            saveData(`books_${currentUser.email}`, books);
+            
+            e.target.reset();
+            closeModal('add-book-modal');
+            showToast('Livro adicionado à estante!', 'success');
+            renderBooks();
+        });
+
+        window.deleteBook = (id) => {
+            if (!currentUser) return;
+            let books = loadData(`books_${currentUser.email}`);
+            books = books.filter(b => b.id !== id);
+            saveData(`books_${currentUser.email}`, books);
+            renderBooks();
+        };
+
+        // Add Wishlist
+        document.getElementById('add-wishlist-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+            
+            const title = document.getElementById('wishlist-input').value;
+            const items = loadData(`wishlist_${currentUser.email}`);
+            items.push({ id: Date.now().toString(), title });
+            saveData(`wishlist_${currentUser.email}`, items);
+            document.getElementById('wishlist-input').value = '';
+            showToast('Adicionado à wishlist!', 'success');
+            renderWishlist();
+        });
+
+        window.deleteWishlist = (id) => {
+            if (!currentUser) return;
+            let items = loadData(`wishlist_${currentUser.email}`);
+            items = items.filter(i => i.id !== id);
+            saveData(`wishlist_${currentUser.email}`, items);
+            renderWishlist();
+        };
+
+        // Initialize
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+        }
+        updateUIState();
+    </script>
+</body>
+</html>
