@@ -56,8 +56,8 @@
         .tab-content.active { display: block; opacity: 1; animation: fadeIn 0.4s ease forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Garante visual limpo mesmo sem Tailwind */
-        #auth-view { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+        /* Garante visual limpo mesmo sem Tailwind, respeitando .hidden */
+        #auth-view:not(.hidden) { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
         #auth-view > div { background: #FFFFFF; padding: 32px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 400px; }
         input, textarea { width: 100%; padding: 10px 14px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; font-size: 14px; margin-top: 4px; }
         button[type="submit"] { width: 100%; background-color: #4F46E5; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 8px; }
@@ -69,13 +69,13 @@
         ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
     </style>
 </head>
-<body class="bg-brand-bg text-brand-text font-sans antialiased h-screen flex flex-col md:flex-row overflow-hidden relative">
+<body class="bg-brand-bg text-brand-text font-sans antialiased min-h-dvh flex flex-col md:flex-row relative">
 
     <!-- Sistema de Notificações (Toast) -->
     <div id="toast" class="fixed top-4 right-4 p-4 rounded-input-btn shadow-lg text-white font-medium transition-opacity duration-300 z-[100] hidden"></div>
 
     <!-- TELA DE AUTENTICAÇÃO -->
-    <div id="auth-view" class="w-full h-full flex items-center justify-center p-4 overflow-y-auto absolute inset-0 bg-brand-bg z-50 transition-opacity duration-300">
+    <div id="auth-view" class="w-full min-h-dvh flex items-center justify-center p-4 overflow-y-auto bg-brand-bg z-50 transition-opacity duration-300">
         <div class="bg-brand-surface p-8 rounded-card shadow-card-subtle w-full max-w-md border border-gray-100 my-auto">
             <div class="flex flex-col items-center mb-8">
                 <div class="w-12 h-12 rounded-lg bg-brand-primary flex items-center justify-center text-white mb-4">
@@ -130,7 +130,7 @@
     </div>
 
     <!-- TELA PRINCIPAL (APP) -->
-    <div id="app-view" class="w-full h-full flex flex-col md:flex-row hidden relative">
+    <div id="app-view" class="w-full min-h-dvh flex flex-col md:flex-row hidden relative">
         <!-- Sidebar / Bottom Nav -->
         <aside class="bg-brand-surface w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col shadow-sm z-40 md:relative fixed bottom-0 left-0">
             <!-- Logo Desktop -->
@@ -530,48 +530,67 @@
             const desc = document.getElementById('book-desc').value;
             
             const books = loadData(`books_${currentUser.email}`);
-            books.push({ id: Date.now().toString(), title, author, desc });
-            saveData(`books_${currentUser.email}`, books);
+            books.push({
+                id: Date.now().toString(),
+                title,
+                author,
+                desc
+            });
             
+            saveData(`books_${currentUser.email}`, books);
+            renderBooks();
             e.target.reset();
             closeModal('add-book-modal');
             showToast('Livro adicionado à estante!', 'success');
-            renderBooks();
         });
 
         window.deleteBook = (id) => {
             if (!currentUser) return;
             let books = loadData(`books_${currentUser.email}`);
-            books = books.filter(b => b.id !== id);
+            books = books.filter(book => book.id !== id);
             saveData(`books_${currentUser.email}`, books);
             renderBooks();
+            showToast('Livro removido da estante.', 'success');
         };
 
         // Add Wishlist
         document.getElementById('add-wishlist-form').addEventListener('submit', (e) => {
             e.preventDefault();
             if (!currentUser) return;
-            
-            const title = document.getElementById('wishlist-input').value;
+
+            const input = document.getElementById('wishlist-input');
+            const title = input.value.trim();
+            if (!title) return;
+
             const items = loadData(`wishlist_${currentUser.email}`);
-            items.push({ id: Date.now().toString(), title });
+            items.push({
+                id: Date.now().toString(),
+                title
+            });
+
             saveData(`wishlist_${currentUser.email}`, items);
-            
-            document.getElementById('wishlist-input').value = '';
-            showToast('Adicionado à wishlist!', 'success');
             renderWishlist();
+            input.value = '';
+            showToast('Adicionado à sua Wishlist!', 'success');
         });
 
         window.deleteWishlist = (id) => {
             if (!currentUser) return;
             let items = loadData(`wishlist_${currentUser.email}`);
-            items = items.filter(i => i.id !== id);
+            items = items.filter(item => item.id !== id);
             saveData(`wishlist_${currentUser.email}`, items);
             renderWishlist();
+            showToast('Item removido da Wishlist.', 'success');
         };
 
-        // Initialize
-        const savedUser = localStorage.getItem('currentUser');
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-        }
+        // Inicialização ao carregar a página
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+            }
+            updateUIState();
+        });
+    </script>
+</body>
+</html>
